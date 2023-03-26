@@ -1,0 +1,23 @@
+---
+ - hosts: docker_prod
+   become: true
+   tasks:
+   - name: login to dockerhub
+     shell: cat /home/ec2-user/only.txt | docker login -u cloudhight --password-stdin
+     args:
+      chdir: /home/ubuntu
+   - name: Stop any running container
+     command: docker stop pet-adoption-container
+     ignore_errors: yes
+   - name: Remove stopped container
+     command: docker rm pet-adoption-container
+     ignore_errors: yes
+   - name: Remove docker image
+     command: docker rmi cloudhight/pet-adoption-image
+     ignore_errors: yes
+   - name: Pull docker image from DockerHub
+     command: docker pull cloudhight/pet-adoption-image
+     ignore_errors: yes
+   - name: Create container from pet-adoption image 
+     command: docker run -it -d --name pet-adoption-conatiner -p 8080:8085 cloudhight/pet-adoption-image
+     ignore_errors: yes

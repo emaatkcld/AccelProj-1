@@ -9,15 +9,23 @@ resource "aws_security_group" "ACPJ1_Ansible_SG" {
     from_port   = var.ssh_port
     to_port     = var.ssh_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_bastion_SG.id, aws_security_group.ACPJ1_Jenkins_SG.id]
   }
 
-  ingress {
-    description = "Allow inbound traffic"
-    from_port   = var.http_port
-    to_port     = var.http_port
+  # ingress {
+  #   description = "Allow ssh access"
+  #   from_port   = var.ssh_port
+  #   to_port     = var.ssh_port
+  #   protocol    = "tcp"
+  #   security_groups = [aws_security_group.ACPJ1_Jenkins_SG.id]
+  # }
+
+   ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    cidr_blocks = [var.local_port]
   }
 
   egress {
@@ -32,9 +40,9 @@ resource "aws_security_group" "ACPJ1_Ansible_SG" {
   }
 }
 
-#Create Security Group for Docker
-resource "aws_security_group" "ACPJ1_Docker_SG" {
-  name        = "${var.name}-Docker-sg"
+#Create Security Group for Docker Prod
+resource "aws_security_group" "ACPJ1_Docker_Prod_SG" {
+  name        = "${var.name}-Docker-Prod-sg"
   description = "Allow Inbound traffic"
   vpc_id      = var.test-vpc
 
@@ -43,15 +51,23 @@ resource "aws_security_group" "ACPJ1_Docker_SG" {
     from_port   = var.ssh_port
     to_port     = var.ssh_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_bastion_SG.id]
+  }
+
+   ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ACPJ1_Ansible_SG.id]
   }
 
   ingress {
-    description = "Allow inbound traffic"
-    from_port   = var.http_port
-    to_port     = var.http_port
+    description = "HTTPS"
+    from_port   = var.secure_port
+    to_port     = var.secure_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    cidr_blocks = [var.all_access] 
   }
 
   ingress {
@@ -59,15 +75,7 @@ resource "aws_security_group" "ACPJ1_Docker_SG" {
     from_port   = var.proxy_port1
     to_port     = var.proxy_port1
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
-  }
-
-  ingress {
-    description = "Allow proxy access"
-    from_port   = var.proxy_port2
-    to_port     = var.proxy_port2
-    protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_Docker_prod_ALB_SG.id]
   }
 
   egress {
@@ -78,7 +86,57 @@ resource "aws_security_group" "ACPJ1_Docker_SG" {
   }
 
   tags = {
-    Name = "${var.name}-Docker_SG"
+    Name = "${var.name}-Docker_Prod_SG"
+  }
+}
+
+#Create Security Group for Docker Stage
+resource "aws_security_group" "ACPJ1_Docker_Stage_SG" {
+  name        = "${var.name}-Docker-Stage-sg"
+  description = "Allow Inbound traffic"
+  vpc_id      = var.test-vpc
+
+  ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ACPJ1_bastion_SG.id]
+  }
+
+   ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ACPJ1_Ansible_SG.id]
+  }
+
+  ingress {
+    description = "HTTP"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ACPJ1_Docker_stage_ALB_SG.id]
+  }
+
+  ingress {
+    description = "Allow proxy access"
+    from_port   = var.proxy_port1
+    to_port     = var.proxy_port1
+    protocol    = "tcp"
+    security_groups = [aws_security_group.ACPJ1_Docker_stage_ALB_SG.id] 
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
+  }
+
+  tags = {
+    Name = "${var.name}-Docker_Stage_SG"
   }
 }
 
@@ -93,7 +151,7 @@ resource "aws_security_group" "ACPJ1_Jenkins_SG" {
     from_port   = var.ssh_port
     to_port     = var.ssh_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_bastion_SG.id]
   }
 
   ingress {
@@ -101,16 +159,16 @@ resource "aws_security_group" "ACPJ1_Jenkins_SG" {
     from_port   = var.proxy_port1
     to_port     = var.proxy_port1
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_Jenkins_ALB_SG.id] 
   }
 
-  ingress {
-    description = "Allow inbound traffic"
-    from_port   = var.http_port
-    to_port     = var.http_port
-    protocol    = "tcp"
-    cidr_blocks = [var.all_access]
-  }
+  # ingress {
+  #   description = "Allow inbound traffic"
+  #   from_port   = var.http_port
+  #   to_port     = var.http_port
+  #   protocol    = "tcp"
+  #   cidr_blocks = [var.all_access]
+  # }
 
   egress {
     from_port   = 0
@@ -135,7 +193,7 @@ resource "aws_security_group" "ACPJ1_Sonarqube_SG" {
     from_port   = var.ssh_port
     to_port     = var.ssh_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    cidr_blocks = [var.local_port]
   }
 
   ingress {
@@ -143,7 +201,7 @@ resource "aws_security_group" "ACPJ1_Sonarqube_SG" {
     from_port   = var.proxy_port2
     to_port     = var.proxy_port2
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    cidr_blocks = [var.local_port]
   }
 
   ingress {
@@ -151,18 +209,10 @@ resource "aws_security_group" "ACPJ1_Sonarqube_SG" {
     from_port   = var.http_port
     to_port     = var.http_port
     protocol    = "tcp"
-    cidr_blocks = [var.all_access]
+    security_groups = [aws_security_group.ACPJ1_Jenkins_SG.id]
   }
 
-  ingress {
-    description = "Allow proxy access"
-    from_port   = var.proxy_port1
-    to_port     = var.proxy_port1
-    protocol    = "tcp"
-    cidr_blocks = [var.all_access]
-  }
-
-  egress {
+   egress {
     from_port   = 0
     to_port     = 0
     protocol    = "-1"
@@ -174,9 +224,9 @@ resource "aws_security_group" "ACPJ1_Sonarqube_SG" {
   }
 }
 
-#Create Security Group for LC ALB
-resource "aws_security_group" "ACPJ1_ALB_SG" {
-  name        = "${var.name}-ALB-sg"
+#Create Security Group for Docker Prod LB
+resource "aws_security_group" "ACPJ1_Docker_prod_ALB_SG" {
+  name        = "${var.name}-Docker-prod-ALB-sg"
   description = "Allow Inbound traffic"
   vpc_id      = var.test-vpc
 
@@ -212,11 +262,95 @@ resource "aws_security_group" "ACPJ1_ALB_SG" {
   }
 
   tags = {
-    Name = "${var.name}-ALB_SG"
+    Name = "${var.name}-Docker-prod-ALB_SG"
   }
 }
 
-#Create Security Group for LC ALB
+#Create Security Group for Docker Prod LB
+resource "aws_security_group" "ACPJ1_Docker_stage_ALB_SG" {
+  name        = "${var.name}-Docker-stage-ALB-sg"
+  description = "Allow Inbound traffic"
+  vpc_id      = var.test-vpc
+
+  ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow proxy access"
+    from_port   = var.proxy_port1
+    to_port     = var.proxy_port1
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+   ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
+  }
+
+  tags = {
+    Name = "${var.name}-Docker-stage-ALB_SG"
+  }
+}
+
+#Create Security Group for Jenkins LB
+resource "aws_security_group" "ACPJ1_Jenkins_ALB_SG" {
+  name        = "${var.name}-Jenkins-ALB-sg"
+  description = "Allow Inbound traffic"
+  vpc_id      = var.test-vpc
+
+  ingress {
+    description = "Allow ssh access"
+    from_port   = var.ssh_port
+    to_port     = var.ssh_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow proxy access"
+    from_port   = var.proxy_port1
+    to_port     = var.proxy_port1
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  ingress {
+    description = "Allow inbound traffic"
+    from_port   = var.http_port
+    to_port     = var.http_port
+    protocol    = "tcp"
+    cidr_blocks = [var.all_access]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.all_access]
+  }
+
+  tags = {
+    Name = "${var.name}-Jenkins-LB_SG"
+  }
+}
+
+#Create Security Group for Bastion
 resource "aws_security_group" "ACPJ1_bastion_SG" {
   name        = "${var.name}-bastion-sg"
   description = "Allow Inbound traffic"
@@ -228,14 +362,6 @@ resource "aws_security_group" "ACPJ1_bastion_SG" {
     to_port     = var.ssh_port
     protocol    = "tcp"
     cidr_blocks = [var.local_port]
-  }
-
-    ingress {
-    description = "Allow inbound traffic"
-    from_port   = var.http_port
-    to_port     = var.http_port
-    protocol    = "tcp"
-    cidr_blocks = [var.all_access]
   }
 
   egress {

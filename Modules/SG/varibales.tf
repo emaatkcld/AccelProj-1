@@ -37,5 +37,9 @@ variable "all_access" {
 }
 
 variable "local_port" {
-  default = "172.31.48.1/32"
+  default = "98.197.187.33/32"
+}
+
+variable "secure_port" {
+  default = 443
 }

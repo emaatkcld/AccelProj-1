@@ -1,0 +1,51 @@
+pipeline{
+    agent any
+    tools {
+    maven 'maven'
+    }
+    stages {
+        stage ('Git Checkout'){
+            steps{
+                git branch: 'kubernetes', credentialsId: 'git-cred', url: 'https://github.com/CloudHight/Set_5_Pet_Adoption_Application_Team_3.git'
+            }
+        }
+        stage('Code Analysis'){
+            steps{
+                withSonarQubeEnv('sonared') {
+                sh "mvn sonar:sonar -Dsonar.java.binaries=target/classes"
+                }
+            }
+        }
+        stage('BuildCode'){
+            steps{
+               sh 'mvn package -Dmaven.test.skip'
+            }
+        }
+        
+        stage('Send artifacts to Ansible ServerDockerBuild'){
+            steps{
+                sshagent([jenkins-key])
+                sh 'scp -o StrictHostKeyChecking=no /var/lib/jenkins/workspace/pipeline/target/spring-petclinic-2.4.2.war ubuntu@10.0.3.216:/etc/ansible'
+            }
+        }
+         stage('Trigger stage playbooks'){
+            steps{
+                sshagent([jenkins-key])
+                sh 'ssh -o StrictHostKeyChecking=no ubuntu@10.0.3.216:| "ansible-playbook -i /etc/ansible/hosts /etc/ansible/docker-image.yml && ansible-playbook -i /etc/ansible/hosts /etc/ansible/docker-stage.yml"'
+            }
+        }
+        
+        
+        stage('Trigger prod playbooks'){
+            input{
+                message 'Do you want to proceed with deployment/"'
+            }
+            steps{
+                sshagent([jenkins-key])
+                sh 'ssh -o StrictHostKeyChecking=no ubuntu@10.0.3.216:| "ansible-playbook -i /etc/ansible/hosts /etc/ansible/docker-prod.yml"'
+            }
+        }
+       
+    }  
+
+}

@@ -1,40 +1,28 @@
-# output "jenkins_privateip" {
-#   value = module.jenkins.jenkins_privateip
-# }
+output "jenkins_ip" {
+  value = module.Jenkins.jenkins_privateip
+}
+output "ansible-ip" {
+  value = module.Ansible.ansible_privateip
+}
+output "bastion_publicip" {
+  value = module.Bastion.Bastion_publicip
+}
+output "jenkins-lb-dns-name" {
+    value = module.Jenkins.jenkins-lb
+}
+output "sonar_pub_ip" {
+  value = module.Sonarqube.sonarqube_publicip
+}
+output "docker-prod-ip" {
+  value = module.Docker-prod.Docker_privateip
+}
+output "docker-stage-ip" {
+  value = module.Docker-stage.Docker_privateip
+}
+output "docker-prod-lb-dns-name" {
+    value = module.Docker-prod.docker-prod-lb-name
+}
 
-# output "bastion_publicip" {
-#   value = module.Bastion.bastion_publicip
-# }
-
-# output "sonar_privateip" {
-#   value = module.sonarqube.sonarqube_privateip
-# }
-
-# output "ansible_privateip" {
-#   value = module.ansible.ansible_privateip
-# }
-
-# output "ansible_id" {
-#   value = module.ansible.ansible_id
-# }
-
-# output "docker_privateip" {
-#   value = module.docker.Docker_privateip
-# }
-
-# output "jenkins-alb" {
-#   value = module.jenkins_loadbalancer.jenkins-lb
-# }
-
-# output "sonarqube_pubip" {
-#   value = module.sonarqube.sonarqube_publicip
-# }
-
-# output "jenkins-slave_prvip" {
-#   value = module.jenkins-slave.jenkins_privateip
-# }
-
-# output "QA_pubip" {
-#   value = module.QA.QA_publicip
-# }
-
+output "docker-stage-lb-dns-name" {
+    value = module.Docker-stage.docker-stage-lb-name
+}

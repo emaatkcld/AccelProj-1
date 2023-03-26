@@ -1,0 +1,20 @@
+---
+ - hosts: localhost
+   become: true
+   tasks:
+   - name: login to dockerhub
+     shell: cat /home/ec2-user/only.txt | docker login -u cloudhight --password-stdin
+     args:
+      chdir: /home/ubuntu
+   - name: Create docker image from pet adoption jar file
+     command: docker build -t pet-adoption-image .
+     args:
+      chdir: /home/ubuntu
+   - name: Add tag to the image
+     command: docker tag pet-adoption-image cloudhight/pet-adoption-image
+   - name: Push image to DockerHub
+     command: docker push cloudhight/pet-adoption-image
+   - name: Remove docker image from ansible node
+     command: docker rmi pet-adoption-image cloudhight/pet-adoption-image
+     ignore_errors: yes
+   

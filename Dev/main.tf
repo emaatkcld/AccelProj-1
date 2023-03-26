@@ -18,88 +18,125 @@ module "ec2_iam" {
 }
 
 
-# module "jenkins" {
-#   source      = "../modules/Jenkins"
-#   ami         = var.ami
-#   security_id = module.sg.jenkins-sg-id
-#   prvsubnet   = module.vpc.prvsn1-id
-#   key_name    = module.key-pair.keypair_id
+module "Jenkins" {
+  source      = "../Modules/Jenkins"
+  ami         = var.ami
+  security_id = module.sg.jenkins-sg-id
+  prvsubnet   = module.vpc.prvsn1-id
+  key_name    = module.key-pair.keypair_id
+  pubsubnet_id   = module.vpc.pubsn1-id
+  lb-sg-id = module.sg.jenkins-sg-lb
 
-# }
-
-# module "Bastion" {
-#   source      = "../modules/Bastion"
-#   ami         = var.ami
-#   security_id = module.sg.bastion-sg-id
-#   pubsubnet   = module.vpc.pubsn1-id
-#   key_name    = module.key-pair.keypair_id
-
-# }
-
-# module "sonarqube" {
-#   source    = "../modules/sonarqube"
-#   sona-ami  = var.ami
-#   sona-sg   = module.sg.sonarqube-sg-id
-#   pubsubnet = module.vpc.pubsn2-id
-#   kp        = module.key-pair.keypair_id
-
-# }
-
-# module "docker" {
-#   source     = "../modules/docker"
-#   docker-ami = var.ami
-#   docker-sg  = module.sg.docker-sg-id
-#   prvsubnet  = module.vpc.prvsn2-id
-#   kp         = module.key-pair.keypair_id
-
-# }
-
-# module "ansible" {
-#   source         = "../modules/ansible"
-#   ansible-ami    = var.ami
-#   ansible-sg     = module.sg.ansible-sg-id
-#   prvsubnet      = module.vpc.prvsn1-id
-#   kp             = module.key-pair.keypair_id
-#   docker_priv_ip = module.docker.Docker_privateip
-#   iam-profile    = module.ec2_iam.iam-profile-name
-#   QA_pubip       = module.QA.QA_publicip
+}
 
 
-# }
+module "Bastion" {
+  source      = "../Modules/Bastion"
+  bastion-sg = module.sg.bastion-sg-id
+  pubsubnet   = module.vpc.pubsn1-id
+  key_name    = module.key-pair.keypair_id
 
-# resource "null_resource" "ansible_configure" {
-#   connection {
-#     type                = "ssh"
-#     host                = module.ansible.ansible_privateip
-#     user                = "ec2-user"
-#     private_key         = file("~/key-pair/padeu2-kp")
-#     bastion_host        = module.Bastion.bastion_publicip
-#     bastion_user        = "ec2-user"
-#     bastion_private_key = file("~/key-pair/padeu2-kp")
-#   }
-#   provisioner "file" {
-#     source      = "~/09-JAN-Pet-Adoption-Containerisation-Ansible-Auto-discovery-Project---EU-Team-2/Dev/auto-discovery"
-#     destination = "/home/ec2-user/auto-discovery"
-#   }
-#   provisioner "file" {
-#     source      = "~/key-pair/padeu2-kp"
-#     destination = "/home/ec2-user/padeu2-kp"
-#   }
-#   provisioner "remote-exec" {
-#     inline = [
-#       "sudo hostnamectl set-hostname ansible",
-#       "sudo chmod 400 /home/ec2-user/padeu2-kp"
-#     ]
-#   }
-# }
+}
 
-# module "jenkins_loadbalancer" {
-#   source           = "../modules/jenkins_loadbalancer"
-#   subnet_id        = module.vpc.pubsn1-id
-#   securitygroup_id = module.sg.alb-sg-id
-#   instance_id      = module.jenkins.jenkins_id
+module "Sonarqube" {
+  source    = "../Modules/Sonarqube"
+  sona-ami  = var.ami
+  sona-sg   = module.sg.sonarqube-sg-id
+  pubsubnet = module.vpc.pubsn2-id
+  kp        = module.key-pair.keypair_id
 
-# }
+}
+
+
+module "Docker-prod" {
+  source     = "../Modules/Docker-prod"
+  docker-ami = var.ami
+  docker-prod-sg  = module.sg.docker-prod-sg-id
+  prvsubnet  = module.vpc.prvsn2-id
+  kp         = module.key-pair.keypair_id
+  pubsubnet_id1   = module.vpc.pubsn1-id
+  pubsubnet_id2   = module.vpc.pubsn2-id
+  lb-prod-sg-id = module.sg.docker-prod-sg-lb
+  vpc_id = module.vpc.vpc_id
+  acm-certificate = module.Route53ACM.acm_cert_arn
+}
+
+module "Docker-stage" {
+  source     = "../Modules/Docker-stage"
+  docker-ami = var.ami
+  docker-stage-sg  = module.sg.docker-stage-sg-id
+  prvsubnet  = module.vpc.prvsn2-id
+  kp         = module.key-pair.keypair_id
+  pubsubnet_id   = module.vpc.pubsn1-id
+  lb-stage-sg-id = module.sg.docker-stage-sg-lb
+
+}
+
+
+
+module "Route53ACM" {
+  source = "../Modules/Route53"
+  docker-prod-lb-dns = module.Docker-prod.docker-prod-lb-name
+  docker-prod-lb-zone-id = module.Docker-prod.docker-prod-lb-zone-id
+}
+
+module "Ansible" {
+  source         = "../Modules/Ansible"
+  ansible-sg     = module.sg.ansible-sg-id
+  prvsubnet      = module.vpc.prvsn1-id
+  kp             = module.key-pair.keypair_id
+  docker-prod-ip = module.Docker-prod.Docker_privateip
+  docker-stage-ip = module.Docker-stage.Docker_privateip
+  iam-profile    = module.ec2_iam.iam-profile-name
+  docker-image = "../Modules/Ansible/docker-image.yml"
+  docker-stage = "../Modules/Ansible/docker-stage.yml"
+  docker-prod = "../Modules/Ansible/docker-prod.yml"
+  Dockerfile = "../Modules/Ansible/Dockerfile"
+  
+}
+
+resource "null_resource" "ansible_configure" {
+  connection {
+    type                = "ssh"
+    host                = module.Ansible.ansible_privateip
+    user                = "ubuntu"
+    private_key         = file("~/keypair/acpj1-kp")
+    bastion_host        = module.Bastion.Bastion_publicip
+    bastion_user        = "ubuntu"
+    bastion_private_key = file("~/keypair/acpj1-kp")
+  }
+  # provisioner "file" {
+  #   source      = "../Modules/Ansible/docker-image.yml"
+  #   destination = "/home/ubuntu/docker-image.yml"
+  # }
+
+  # provisioner "file" {
+  #   source      = "../Modules/Ansible/docker-prod.yml"
+  #   destination = "/home/ubuntu/docker-prod.yml"
+  # }
+
+  # provisioner "file" {
+  #   source      = "../Modules/Ansible/docker-stage.yml"
+  #   destination = "/home/ubuntu/docker-stage.yml"
+  # }
+
+  # provisioner "file" {
+  #   source      = "../Modules/Ansible/Dockerfile"
+  #   destination = "/home/ubuntu/Dockerfile"
+  # }
+
+  provisioner "file" {
+    source      = "~/keypair/acpj1-kp"
+    destination = "/home/ubuntu/.ssh/acpj1-kp"
+  }
+  provisioner "remote-exec" {
+    inline = [
+      "sudo hostnamectl set-hostname ansible",
+      "sudo chmod 400 /home/ubuntu/.ssh/acpj1-kp"
+    ]
+  }
+}
+
 
 # module "alb" {
 #   source      = "../modules/alb"
@@ -130,23 +167,7 @@ module "ec2_iam" {
 
 # }
 
-# module "QA" {
-#   source     = "../modules/QA"
-#   docker-ami = var.ami
-#   docker-sg  = module.sg.docker-sg-id
-#   pubsn      = module.vpc.pubsn1-id
-#   kp         = module.key-pair.keypair_id
 
-# }
-
-# module "jenkins-slave" {
-#   source      = "../modules/jenkins-slave"
-#   ami         = var.ami
-#   security_id = module.sg.jenkins-sg-id
-#   prvsubnet   = module.vpc.prvsn1-id
-#   key_name    = module.key-pair.keypair_id
-
-# }
 
 
 
